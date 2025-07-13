@@ -40,7 +40,7 @@ async def on_command_error(ctx, error):
 
 async def handle_gemini_question(ctx, question: str, personality_key: str, title: str):
     if not question:
-        await ctx.send("Please provide a question for Gemini to answer! Example: `.askcrazy What is the capital of France?`")
+        await ctx.send("Please provide a question for Gemini to answer! Example: `.askcustompersonality What is the capital of France?`")
         return
 
     personality_prefix = config[personality_key]
