@@ -46,7 +46,7 @@ Here are the steps to creating a Discord Bot account:
 
 Open code in VS code and type
 
-python main.py
+python bot.py
 
 ## Contributors
 
