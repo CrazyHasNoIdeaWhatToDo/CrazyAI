@@ -66,8 +66,8 @@ async def handle_gemini_question(ctx, question: str, personality_key: str, title
         await ctx.send(f"An error occurred while trying to get a response from Gemini. Please try again later. Error: `{e}`")
         print(f"Gemini API Error: {e}")
 
-@client.group(name="crazyhelp", invoke_without_command=True)
-async def crazyhelp(ctx):
+@client.group(name="bothelp", invoke_without_command=True)
+async def bothelp(ctx):
     embed = discord.Embed(title="Help Center ✨", color=0xF49726)
     embed.add_field(
         name="Command Categories:",
@@ -76,7 +76,7 @@ async def crazyhelp(ctx):
             "👻 `askcustompersonality :` Talk to Custom personality AI\n"
             "🤖 `askai :` Ask AI a question\n"
             "🖼️ `image :` Generate an image\n"
-            "To view the commands of a category, send `.crazyhelp <category>`"
+            "To view the commands of a category, send `.bothelp <category>`"
         ),
         inline=False
     )
@@ -89,10 +89,10 @@ async def ai(ctx):
     embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Command requested by: {ctx.author.display_name}")
     await ctx.send(embed=embed)
         
-@client.command(name="askcrazy", help="Ask CrazyAI a question.")
+@client.command(name="askcustompersonality", help="Ask custompersonalityAI a question.")
 @commands.cooldown(1, 15, commands.BucketType.user)
 async def askcustompersonality(ctx, *, question: str = None):
-    await handle_gemini_question(ctx, question, "crazy_desc", "CrazyAI's Answer 👻")
+    await handle_gemini_question(ctx, question, "custom_personality_desc", "custompersonalityAI's Answer 👻")
     
 @client.command(help="Shows the bot's latency")
 @commands.cooldown(1, 10, commands.BucketType.channel)
