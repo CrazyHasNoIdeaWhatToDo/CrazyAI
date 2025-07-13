@@ -83,7 +83,7 @@ async def bothelp(ctx):
     embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Help requested by: {ctx.author.display_name}")
     await ctx.send(embed=embed)
 
-@crazyhelp.command()
+@bothelp.command()
 async def ai(ctx):
     embed = discord.Embed(title="Help Center ✨", description="Commands of **AI**\n`.ask <query>:` Ask Google Gemini a question", color=0xF49726)
     embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Command requested by: {ctx.author.display_name}")
