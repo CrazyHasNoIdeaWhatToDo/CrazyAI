@@ -26,11 +26,7 @@ It should contain the following keys:
 
     openai_api_key: Your OpenAI API key
 
-    crazy_desc: Description text for "Crazy"
-
-    allan_desc: Description text for "Allan"
-
-    seb_desc: Description text for "Seb"
+    custom_personality_desc: Description text for "Crazy"
 
     ai_desc: General AI description
 
