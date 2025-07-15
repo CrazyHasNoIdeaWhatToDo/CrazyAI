@@ -5,7 +5,7 @@ import google.generativeai as genai
 import openai
 import aiohttp
 from io import BytesIO
-
+# Read configuration variables (token, API keys, prefixes) from config.json
 with open("config.json", "r") as f:
     config = json.load(f)
     
@@ -13,10 +13,10 @@ token = config["token"]
 prefix = config["prefix"]
 gemini_api_key = config["gemini_api_key"]
 openai.api_key = config["openai_api_key"]
-
+# SETUP GEMINI MODEL
 genai.configure(api_key=gemini_api_key)
 model = genai.GenerativeModel('gemini-2.5-pro')
-
+# INITIALIZE DISCORD BOT
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -37,7 +37,7 @@ async def on_command_error(ctx, error):
         await ctx.send(f"**Missing argument: {error.param.name}. Please provide the necessary information.**")
     else:
         print(f"Unhandled error: {error}") 
-
+# GEMINI AI RESPONSE HANDLER
 async def handle_gemini_question(ctx, question: str, personality_key: str, title: str):
     if not question:
         await ctx.send("Please provide a question for Gemini to answer! Example: `.askcustompersonality What is the capital of France?`")
@@ -50,7 +50,7 @@ async def handle_gemini_question(ctx, question: str, personality_key: str, title
         async with ctx.typing():
             response = model.generate_content(full_query)
             gemini_response_text = response.text
-
+            # Check Discord message character limit
             if len(gemini_response_text) > 2000:
                 await ctx.send(f"**Gemini's Response:**\n{gemini_response_text[:1900]}...\n(Response too long, truncated.)")
             else:
@@ -65,7 +65,7 @@ async def handle_gemini_question(ctx, question: str, personality_key: str, title
     except Exception as e:
         await ctx.send(f"An error occurred while trying to get a response from Gemini. Please try again later. Error: `{e}`")
         print(f"Gemini API Error: {e}")
-
+# HELP COMMAND GROUP
 @client.group(name="bothelp", invoke_without_command=True)
 async def bothelp(ctx):
     embed = discord.Embed(title="Help Center ✨", color=0xF49726)
@@ -88,21 +88,21 @@ async def ai(ctx):
     embed = discord.Embed(title="Help Center ✨", description="Commands of **AI**\n`.ask <query>:` Ask Google Gemini a question", color=0xF49726)
     embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Command requested by: {ctx.author.display_name}")
     await ctx.send(embed=embed)
-        
+# CUSTOM PERSONALITY COMMAND
 @client.command(name="askcustompersonality", help="Ask custompersonalityAI a question.")
 @commands.cooldown(1, 15, commands.BucketType.user)
 async def askcustompersonality(ctx, *, question: str = None):
     await handle_gemini_question(ctx, question, "custom_personality_desc", "custompersonalityAI's Answer 👻")
-    
+# PING COMMAND
 @client.command(help="Shows the bot's latency")
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def ping(ctx):
     await ctx.send(f'Ping! **{round(client.latency * 1000)}ms**')
-
+# HELLO COMMAND
 @client.command(help="Greets the user")
 async def hello(ctx):
     await ctx.send("Hello back! 👋")
-    
+# ALL COMMANDS LIST
 @client.command(help="Displays all available commands")
 async def allcommands(ctx):
     embed = discord.Embed(title="All Commands 🧾", color=0xF49726)
@@ -111,6 +111,7 @@ async def allcommands(ctx):
     embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Requested by: {ctx.author.display_name}")
     await ctx.send(embed=embed)
     
+# IMAGE GENERATION USING DALL·E 
 @client.command(name="image", help="Generate an image using DALL·E 3")
 @commands.cooldown(1, 30, commands.BucketType.user)
 async def image(ctx, *, prompt: str = None):
