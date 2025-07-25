@@ -10,9 +10,9 @@ user_cooldowns = {}
 user_guess_counts = {}
 
 # Define joker numbers
-joker_numbers = {13, 666, 999}
+joker_numbers = {}
 game_locked = False
-command_cooldown = 300
+command_cooldown = 
 
 def game_commands(client):
     @client.command()
