@@ -1,10 +1,9 @@
-import discord
-from discord.ext import commands
-import json
+from commands import gemini_commands, guess_commands, image_commands, utility_commands, fun_commands, siege_of_six
 import google.generativeai as genai
+from discord.ext import commands
+import discord
 import openai
-import aiohttp
-from io import BytesIO
+import json
 
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -38,115 +37,11 @@ async def on_command_error(ctx, error):
     else:
         print(f"Unhandled error: {error}") 
 
-async def handle_gemini_question(ctx, question: str, personality_key: str, title: str):
-    if not question:
-        await ctx.send("Please provide a question for Gemini to answer! Example: `.askcustompersonality What is the capital of France?`")
-        return
+gemini_commands.gemini_commands(model, client)    
+image_commands.image_commands(openai, client)
+utility_commands.utility_commands(client) 
+guess_commands.game_commands(client)
+fun_commands.fun_commands(client)
+siege_of_six.siege_of_six_commands(config, client)
 
-    personality_prefix = config[personality_key]
-    full_query = personality_prefix + question
-
-    try:
-        async with ctx.typing():
-            response = model.generate_content(full_query)
-            gemini_response_text = response.text
-
-            if len(gemini_response_text) > 2000:
-                await ctx.send(f"**Gemini's Response:**\n{gemini_response_text[:1900]}...\n(Response too long, truncated.)")
-            else:
-                embed = discord.Embed(
-                    title=title,
-                    description=gemini_response_text,
-                    color=0x4285F4
-                )
-                embed.set_footer(text=f"Question asked by: {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
-                await ctx.send(embed=embed)
-
-    except Exception as e:
-        await ctx.send(f"An error occurred while trying to get a response from Gemini. Please try again later. Error: `{e}`")
-        print(f"Gemini API Error: {e}")
-
-@client.group(name="bothelp", invoke_without_command=True)
-async def bothelp(ctx):
-    embed = discord.Embed(title="Help Center ✨", color=0xF49726)
-    embed.add_field(
-        name="Command Categories:",
-        value=(
-            "😃 `hello :` says hello back\n"
-            "👻 `askcustompersonality :` Talk to Custom personality AI\n"
-            "🤖 `askai :` Ask AI a question\n"
-            "🖼️ `image :` Generate an image\n"
-            "To view the commands of a category, send `.bothelp <category>`"
-        ),
-        inline=False
-    )
-    embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Help requested by: {ctx.author.display_name}")
-    await ctx.send(embed=embed)
-
-@bothelp.command()
-async def ai(ctx):
-    embed = discord.Embed(title="Help Center ✨", description="Commands of **AI**\n`.ask <query>:` Ask Google Gemini a question", color=0xF49726)
-    embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Command requested by: {ctx.author.display_name}")
-    await ctx.send(embed=embed)
-        
-@client.command(name="askcustompersonality", help="Ask custompersonalityAI a question.")
-@commands.cooldown(1, 15, commands.BucketType.user)
-async def askcustompersonality(ctx, *, question: str = None):
-    await handle_gemini_question(ctx, question, "custom_personality_desc", "custompersonalityAI's Answer 👻")
-    
-@client.command(help="Shows the bot's latency")
-@commands.cooldown(1, 10, commands.BucketType.channel)
-async def ping(ctx):
-    await ctx.send(f'Ping! **{round(client.latency * 1000)}ms**')
-
-@client.command(help="Greets the user")
-async def hello(ctx):
-    await ctx.send("Hello back! 👋")
-    
-@client.command(help="Displays all available commands")
-async def allcommands(ctx):
-    embed = discord.Embed(title="All Commands 🧾", color=0xF49726)
-    cmds = [f"`{prefix}{command.name}` - {command.help or 'No description'}" for command in client.commands if not command.hidden]
-    embed.description = "\n".join(cmds)
-    embed.set_footer(icon_url=ctx.author.avatar.url, text=f"Requested by: {ctx.author.display_name}")
-    await ctx.send(embed=embed)
-    
-@client.command(name="image", help="Generate an image using DALL·E 3")
-@commands.cooldown(1, 30, commands.BucketType.user)
-async def image(ctx, *, prompt: str = None):
-    if not prompt:
-        await ctx.send("Please provide a prompt for the image!")
-        return
-
-    await ctx.send("🎨 Generating image... this might take a few seconds.")
-    
-    try:
-        # Create image via DALL·E 3
-        response = openai.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1
-        )
-
-        image_url = response.data[0].url
-
-        # Download image and send as file
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image_url) as resp:
-                if resp.status != 200:
-                    await ctx.send("Failed to download the image.")
-                    return
-                data = await resp.read()
-                image_file = discord.File(BytesIO(data), filename="image.png")
-
-                embed = discord.Embed(title="Your AI-Generated Image", description=f"Prompt: {prompt}", color=0x3498DB)
-                embed.set_image(url="attachment://image.png")
-                await ctx.send(file=image_file, embed=embed)
-
-    except Exception as e:
-        await ctx.send(f"❌ Error generating image: `{e}`")
-        print(f"DALL·E error: {e}")
-        
 client.run(token)
