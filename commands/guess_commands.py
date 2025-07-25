@@ -10,9 +10,10 @@ user_cooldowns = {}
 user_guess_counts = {}
 
 # Define joker numbers
-joker_numbers = {}
+joker_numbers = {0}
 game_locked = False
-command_cooldown = 
+command_cooldown = 120
+correct_number = 0
 
 def game_commands(client):
     @client.command()
@@ -63,7 +64,7 @@ def game_commands(client):
             await ctx.send("💀 You hit a joker number! Guessing game locked.")
             return
 
-        if guess_number == 145:
+        if guess_number == correct_number:
             await ctx.send("✅ Correct! You guessed the number and won 1k robux! Message Crazy with the Proof.")
         else:
             await ctx.send("❌ Wrong guess. Try again!")
