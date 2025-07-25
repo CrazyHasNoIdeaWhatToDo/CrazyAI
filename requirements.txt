@@ -1,2 +1,8 @@
 discord.py
 requests
+oogle-generativeai
+openai
+aiohttp
+pillow
+emoji
+nltk
