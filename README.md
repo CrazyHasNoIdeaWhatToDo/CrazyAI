@@ -14,21 +14,7 @@ pip install -r requirements.txt
 
 ### 2. Configuration
 
-Create a file named config.json in the root directory.
-
-It should contain the following keys:
-
-    token: Your Discord bot token
-
-    prefix: Command prefix for the bot (e.g. ".")
-
-    gemini_api_key: Your Gemini API key
-
-    openai_api_key: Your OpenAI API key
-
-    custom_personality_desc: Description text for "Crazy"
-
-    ai_desc: General AI description
+Update config.json fields with your own APIs and discord bot tokens etc.
 
 ### 3. Bot setup
 
