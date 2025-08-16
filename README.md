@@ -14,7 +14,7 @@ pip install -r requirements.txt
 
 ### 2. Configuration
 
-Update config.json fields with your own APIs and discord bot tokens etc.
+Update data/config.json fields with your own APIs and discord bot tokens etc.
 
 ### 3. Bot setup
 
@@ -35,3 +35,4 @@ python bot.py
 - [@CrazyHasNoIdeaWhatToDo]([https://github.com/your-username](https://github.com/CrazyHasNoIdeaWhatToDo))
 
 <!-- omit in toc -->
+
