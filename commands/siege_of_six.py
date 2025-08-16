@@ -1,17 +1,21 @@
+from .bank import get_player_diamonds, update_player_diamonds
 import discord
 from discord.ext import commands
+from discord import app_commands
 import random
 import nltk
 from nltk.corpus import words, brown
 import asyncio
 from collections import Counter
 
+# NLTK downloads for word and frequency data
 nltk.download('words')
 nltk.download('brown')
 
-def siege_of_six_commands(config, client):
-    @client.command()
-    async def SOSrules(ctx):
+def siege_of_six_commands(config, tree: app_commands.CommandTree):
+    
+    @tree.command(name="sosrules", description="Shows the rules for Siege of Six.")
+    async def sosrules(interaction: discord.Interaction):
         rules = (
             "**Siege of Six (SOS) Rules:**\n"
             "🧠 You have to guess a hidden 6-letter word.\n"
@@ -21,29 +25,31 @@ def siege_of_six_commands(config, client):
             "💡 On attempt 5, both fake letters are removed.\n"
             "⚔️ Can you breach the Siege of Six?"
         )
-        await ctx.send(rules)
+        await interaction.response.send_message(rules)
 
-    @client.command()
-    async def SOSplay(ctx, difficulty: str = None):
-        if difficulty is None:
-            await ctx.send("❗ You must choose a difficulty level.\nUsage: `!SOSplay <easy|medium|hard|extreme>`")
-            return
-
-        difficulty = difficulty.lower()
+    @tree.command(name="sosplay", description="Starts a game of Siege of Six.")
+    @app_commands.choices(difficulty=[
+        app_commands.Choice(name="Easy", value="easy"),
+        app_commands.Choice(name="Medium", value="medium"),
+        app_commands.Choice(name="Hard", value="hard"),
+        app_commands.Choice(name="Extreme", value="extreme"),
+        app_commands.Choice(name="Impossible", value="impossible")
+    ])
+    async def sosplay(interaction: discord.Interaction, difficulty: app_commands.Choice[str]):
+        difficulty = difficulty.value.lower()
 
         # Difficulty ranges: (min_freq, max_freq)
         difficulty_ranges = {
-            "easy": (8, float("inf")),
-            "medium": (4, 7),
-            "hard": (2, 3),
-            "extreme": (0, 1)
+            "easy": (10, float("inf")),
+            "medium": (5, 8),
+            "hard": (3, 4),
+            "extreme": (1, 2),
+            "impossible" : (0,0)
         }
 
-        if difficulty not in difficulty_ranges:
-            await ctx.send("⚠️ Invalid difficulty. Please choose from: `easy`, `medium`, `hard`, or `extreme`.")
-            return
-
         min_freq, max_freq = difficulty_ranges[difficulty]
+
+        await interaction.response.defer() # Defer the response as this can take time
 
         brown_words = [w.lower() for w in brown.words()]
         brown_freq = Counter(brown_words)
@@ -57,7 +63,7 @@ def siege_of_six_commands(config, client):
         ]
 
         if not word_list:
-            await ctx.send("❌ No suitable words found for that difficulty. Try a different one.")
+            await interaction.followup.send("❌ No suitable words found for that difficulty. Try a different one.")
             return
 
         original_word = random.choice(word_list)
@@ -75,55 +81,102 @@ def siege_of_six_commands(config, client):
         jumbled = list(original_word + ''.join(extras))
         random.shuffle(jumbled)
 
-        await ctx.send(f"🧩 **Siege of Six** begins! Difficulty: **{difficulty.capitalize()}**\nGuess the original 6-letter word from these letters:")
+        # Create the initial embed
+        embed = discord.Embed(
+            title="Siege of Six",
+            description=f"**Difficulty:** {difficulty.capitalize()}\nGuess the original 6-letter word from these letters:",
+            color=0x00FF00
+        )
+        embed.add_field(name="Current Letters:", value=f"`{' '.join(jumbled)}`", inline=False)
+        embed.set_footer(text=f"Game started by {interaction.user.display_name}")
 
+        # Send the initial embed and store the message object
+        game_message = await interaction.followup.send(embed=embed)
+        
         attempts = 6
 
         def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
+            return m.author == interaction.user and m.channel == interaction.channel
 
         for attempt in range(1, attempts + 1):
+            hint_message = ""
             if attempt == 3 and extras[0] in jumbled:
                 jumbled.remove(extras[0])
-                await ctx.send("💡 Hint: One extra letter removed!")
+                hint_message = "💡 Hint: One fake letter has been removed!"
             elif attempt == 5 and extras[1] in jumbled:
                 jumbled.remove(extras[1])
-                await ctx.send("💡 Hint: Both extra letters removed!")
+                hint_message = "💡 Hint: Both fake letters have been removed!"
 
-            # Shuffle the letters before each attempt
             random.shuffle(jumbled)
+            
+            # Update the embed with the new attempt and letters
+            embed.set_field_at(0, name=f"Attempt {attempt}/6:", value=f"`{' '.join(jumbled)}`", inline=False)
+            
+            # If there's a hint, add it to the embed's description
+            if hint_message:
+                embed.description += f"\n\n{hint_message}"
+            
+            # Edit the message with the updated embed
+            await game_message.edit(embed=embed)
 
-            await ctx.send(f"**Attempt {attempt}:** `{' '.join(jumbled)}`")
-            await ctx.send("Your guess:")
-
+            # Wait for the user's guess
             try:
-                # Wait 20 seconds first
-                guess_msg = await client.wait_for('message', timeout=50.0, check=check)
+                guess_msg = await interaction.client.wait_for('message', timeout=60.0, check=check)
             except asyncio.TimeoutError:
-                # Warn user: only 10 seconds left
-                await ctx.send("⏳ Warning: Only 10 seconds left to answer!")
-                try:
-                    # Wait remaining 10 seconds
-                    guess_msg = await client.wait_for('message', timeout=10.0, check=check)
-                except asyncio.TimeoutError:
-                    await ctx.send("⌛ You took too long. Game over!")
-                    return
+                await game_message.edit(
+                    content=f"⌛ Game over! You took too long. The word was **{original_word}**",
+                    embed=None
+                )
+                # Give 30 diamonds for losing by timeout
+                server_id = str(interaction.guild.id) if interaction.guild else "global"
+                player_id = str(interaction.user.id)
+                update_player_diamonds(server_id, player_id, 30)
+                await interaction.followup.send("💎 You earned 30 diamonds for participating!")
+                return
 
             guess = guess_msg.content.strip().lower()
+            await guess_msg.delete() # Delete the user's guess to keep the channel clean
 
             if guess == original_word:
-                await ctx.send("🎉 Correct! You breached the Siege of Six!")
-                hint = config[f"{difficulty}_hint"]
-                if attempt <= 2:
-                    hint = config.get(f"{difficulty}_hint", "No hint available.")
-                    try:
-                        await ctx.author.send(f"🧠 You beat **{difficulty}** in {attempt} attempts!\nHere's your reward hint:\n> {hint}")
-                    except discord.Forbidden:
-                        await ctx.send("📪 You beat it fast, but I couldn't DM you the hint! Please check your privacy settings.")
-                else:
-                    await ctx.send("💡 If you beat the game within two attempts, you can win a secret hint for each difficulty! Try again!")
+                embed.description += f"\n\n🎉 Correct! You breached the Siege of Six!"
+                embed.color = discord.Color.green()
+                await game_message.edit(embed=embed)
+
+                # Award diamonds based on difficulty
+                diamond_rewards = {
+                    "easy": 30,
+                    "medium": 50,
+                    "hard": 100,
+                    "extreme": 200,
+                    "impossible": 500
+                }
+                
+                reward = diamond_rewards.get(difficulty, 30)  # default fallback 50
+                reward = reward * (7 - attempt)
+                
+                # Update player diamonds
+                server_id = str(interaction.guild.id) if interaction.guild else "global"
+                player_id = str(interaction.user.id)
+                update_player_diamonds(server_id, player_id, reward)
+
+                await interaction.followup.send(f"💎 You earned {reward} diamonds for winning!")
+
                 return
             else:
-                await ctx.send("❌ Incorrect.")
+                embed.description += f"\n\n❌ Incorrect guess: `{guess}`"
+                embed.color = discord.Color.red()
+                await game_message.edit(embed=embed)
+                # Reset the description color for the next round
+                embed.color = discord.Color.blue() 
+        
+        # If all attempts are used up
+        embed.description += f"\n\n💀 Game Over! The correct word was: **{original_word}**"
+        embed.color = discord.Color.red()
+        await game_message.edit(embed=embed)
 
-        await ctx.send(f"💀 Game Over! The correct word was: **{original_word}**")
+        # Give 30 diamonds for losing
+        server_id = str(interaction.guild.id) if interaction.guild else "global"
+        player_id = str(interaction.user.id)
+        update_player_diamonds(server_id, player_id, 30)
+
+        await interaction.followup.send("💎 You earned 30 diamonds for participating!")

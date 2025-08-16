@@ -1,21 +1,33 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import aiohttp
 from io import BytesIO
+import openai
 
-def image_commands(openai, client):        
-    @client.command(name="image", help="Generate an image using DALL·E 3")
-    @commands.cooldown(1, 30, commands.BucketType.user)
-    async def image(ctx, *, prompt: str = None):
+# The setup function now accepts master_server_id
+def image_commands(openai_client, tree: app_commands.CommandTree, master_server_id: int):
+    # This command is now registered globally, but we'll add a check inside the function
+    @tree.command(name="image", description="Generate an image using DALL·E 3")
+    @app_commands.checks.cooldown(1, 30, key=lambda i: i.user.id)
+    async def image(interaction: discord.Interaction, prompt: str):
+        # Check if the command is used in the master server
+        #if interaction.guild_id != master_server_id:
+        #    await interaction.response.send_message(
+        #        f"🚫 This command can only be used in Crazy's main server!",
+        #        ephemeral=True # Only the user who used the command will see this
+        #    )
+        #    return
+
         if not prompt:
-            await ctx.send("Please provide a prompt for the image!")
+            await interaction.response.send_message("Please provide a prompt for the image!", ephemeral=True)
             return
 
-        await ctx.send("🎨 Generating image... this might take a few seconds.")
-        
+        await interaction.response.defer() # Defer the response as API calls can take time
+
         try:
             # Create image via DALL·E 3
-            response = openai.images.generate(
+            response = openai_client.images.generate(
                 model="dall-e-3",
                 prompt=prompt,
                 size="1024x1024",
@@ -29,15 +41,15 @@ def image_commands(openai, client):
             async with aiohttp.ClientSession() as session:
                 async with session.get(image_url) as resp:
                     if resp.status != 200:
-                        await ctx.send("Failed to download the image.")
+                        await interaction.followup.send("Failed to download the image.")
                         return
                     data = await resp.read()
                     image_file = discord.File(BytesIO(data), filename="image.png")
 
                     embed = discord.Embed(title="Your AI-Generated Image", description=f"Prompt: {prompt}", color=0x3498DB)
                     embed.set_image(url="attachment://image.png")
-                    await ctx.send(file=image_file, embed=embed)
+                    await interaction.followup.send(file=image_file, embed=embed)
 
         except Exception as e:
-            await ctx.send(f"❌ Error generating image: `{e}`")
+            await interaction.followup.send(f"❌ Error generating image: `{e}`")
             print(f"DALL·E error: {e}")
